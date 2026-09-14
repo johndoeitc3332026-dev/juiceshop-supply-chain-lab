@@ -193,4 +193,4 @@ jobs:
               --exclude-rules potentially_compromised_email_domain \ 
               --exclude-rules unclaimed_maintainer_email_domain || true 
           done 
-        continue-on-error: true           
+        continue-on-error: true 
