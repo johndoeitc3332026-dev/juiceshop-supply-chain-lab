@@ -42,12 +42,29 @@ jobs:
           name: juiceshop-sbom
           path: juiceshop.sbom.json
 
-      # 5. Scan the complete SBOM with Grype and output a valid SARIF file
+      # 5. Scan the complete SBOM with Grype and output the custom Markdown table format
       - name: Scan SBOM with Grype
-        run: grype sbom:juiceshop.sbom.json -o sarif > results.sarif
+        run: |
+          cat << 'EOF' > report.tmpl
+          | CVE ID | GHSA / Original ID | Severity | Package | Installed Version | Fix Version |
+          | --- | --- | --- | --- | --- | --- |
+          {{- range .Matches }}
+          | {{ .Vulnerability.ID }} | {{ range .RelatedVulnerabilities }}{{ .ID }}{{ break }}{{ end }} | {{ .Vulnerability.Severity }} | {{ .Artifact.Name }} | {{ .Artifact.Version }} | {{ range .Vulnerability.Fix.Versions }}{{ . }}{{ break }}{{ end }} |
+          {{- end }}
+          EOF
+
+          grype sbom:juiceshop.sbom.json -o template -t report.tmpl > grype-report.md
+          grype sbom:juiceshop.sbom.json -o sarif > results.sarif
         continue-on-error: true
 
-      # 6. Upload SARIF results to GitHub Security tab
+      # 6. Upload Markdown Report Artifact
+      - name: Upload Grype Report Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: grype-vulnerability-report
+          path: grype-report.md
+
+      # 7. Upload SARIF results to GitHub Security tab
       - name: Upload SARIF to GitHub Security
         uses: github/codeql-action/upload-sarif@v3
         if: always()
